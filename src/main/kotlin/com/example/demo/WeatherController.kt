@@ -5,17 +5,17 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-@CrossOrigin(origins = ["*"])
+//@CrossOrigin(origins = ["*"])
 @RestController
 @RequestMapping("/api/forecast")
 class WeatherController(private val weatherService: WeatherService) {
 
     @GetMapping
     fun getWeather(city: String): Map<String, Any?> {
-        val raw = weatherService.getWeather(city)
+        val forecast = weatherService.getForecast(city)
+        val currentWeather = weatherService.getCurrentWeather(city)
 
-        // Берём первый элемент как "текущую погоду"
-        val currentItem = raw.list.firstOrNull() ?: throw RuntimeException("No forecast data")
+        val currentItem = forecast.list.firstOrNull() ?: throw RuntimeException("No forecast data")
 
         val current = linkedMapOf<String, Any?>(
             "temperature" to currentItem.main.temp.toInt(),
@@ -23,12 +23,11 @@ class WeatherController(private val weatherService: WeatherService) {
             "condition" to (currentItem.weather.firstOrNull()?.main?.lowercase() ?: "unknown"),
             "humidity" to currentItem.main.humidity,
             "wind" to currentItem.wind.speed,
-            "sunrise" to "-", // Если нет sunrise в /forecast, оставляем "-"
-            "sunset" to "-"   // Если нет sunset в /forecast, оставляем "-"
+            "sunrise" to unixToTime(currentWeather.sys.sunrise),
+            "sunset" to unixToTime(currentWeather.sys.sunset)
         )
 
-        // Группируем прогноз по дням (максимум 5 дней)
-        val forecastByDay = raw.list.groupBy { unixToDay(it.dt) }
+        val forecastByDay = forecast.list.groupBy { unixToDay(it.dt) }
             .map { (day, items) ->
                 val avgTemp = items.map { it.main.temp }.average().toInt()
                 val condition = items.firstOrNull()?.weather?.firstOrNull()?.main?.lowercase() ?: "sun"
@@ -39,9 +38,8 @@ class WeatherController(private val weatherService: WeatherService) {
                 )
             }.take(5)
 
-        // Собираем финальный JSON с сохранением порядка
-        val result = linkedMapOf<String, Any?>(
-            "city" to raw.city.name,
+        return linkedMapOf(
+            "city" to forecast.city.name,
             "temperature" to current["temperature"],
             "feels_like" to current["feels_like"],
             "condition" to current["condition"],
@@ -51,13 +49,17 @@ class WeatherController(private val weatherService: WeatherService) {
             "sunset" to current["sunset"],
             "forecast" to forecastByDay
         )
-
-        return result
     }
 
     private fun unixToDay(unix: Long): String {
         val instant = java.time.Instant.ofEpochSecond(unix)
         val zoned = instant.atZone(java.time.ZoneId.systemDefault())
         return zoned.dayOfWeek.name.take(3)
+    }
+
+    private fun unixToTime(unix: Long): String {
+        val instant = java.time.Instant.ofEpochSecond(unix)
+        val zoned = instant.atZone(java.time.ZoneId.systemDefault())
+        return zoned.toLocalTime().toString() // Например: "06:23:04"
     }
 }
