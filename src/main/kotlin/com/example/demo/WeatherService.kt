@@ -40,7 +40,7 @@ class WeatherService {
     private val apiKey = "762fc2d75d1c2b82065519d8f831af23"
     private val client = WebClient.create("https://api.openweathermap.org/data/2.5")
 
-    fun getWeather(city: String): ForecastResponse {
+    fun getForecast(city: String): ForecastResponse {
         return client.get()
             .uri { uriBuilder ->
                 uriBuilder.path("/forecast")
@@ -53,5 +53,28 @@ class WeatherService {
             .bodyToMono(ForecastResponse::class.java)
             .block()!!
     }
+
+    fun getCurrentWeather(city: String): CurrentWeatherResponse {
+        return client.get()
+            .uri { uriBuilder ->
+                uriBuilder.path("/weather")
+                    .queryParam("q", city)
+                    .queryParam("appid", apiKey)
+                    .queryParam("units", "metric")
+                    .build()
+            }
+            .retrieve()
+            .bodyToMono(CurrentWeatherResponse::class.java)
+            .block()!!
+    }
 }
 
+// DTO для /weather
+data class CurrentWeatherResponse(
+    val sys: Sys,
+)
+
+data class Sys(
+    val sunrise: Long,
+    val sunset: Long
+)
