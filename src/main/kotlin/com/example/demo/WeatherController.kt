@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-//@CrossOrigin(origins = ["*"])
 @RestController
 @RequestMapping("/api/forecast")
 class WeatherController(private val weatherService: WeatherService) {
@@ -60,6 +59,6 @@ class WeatherController(private val weatherService: WeatherService) {
     private fun unixToTime(unix: Long): String {
         val instant = java.time.Instant.ofEpochSecond(unix)
         val zoned = instant.atZone(java.time.ZoneId.systemDefault())
-        return zoned.toLocalTime().toString() // Например: "06:23:04"
+        return zoned.toLocalTime().toString()
     }
 }
